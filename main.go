@@ -1,26 +1,20 @@
 package main
 
 import (
+	"Tycon/tycon"
 	"fmt"
-	"log"
 	"net/http"
 )
 
-type Engine struct{}
-
-func (e *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	switch req.URL.Path {
-	case "/":
-		fmt.Fprintf(w, "URL.Path = %q\n", req.URL.Path)
-	case "/hello":
+func main() {
+	r := tycon.New()
+	r.GET("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "URL.Path = %q\n", r.URL.Path)
+	})
+	r.GET("/hello", func(w http.ResponseWriter, req *http.Request) {
 		for k, v := range req.Header {
 			fmt.Fprintf(w, "Header[%q] = %q\n", k, v)
 		}
-
-	}
-}
-
-func main() {
-	engine := new(Engine)
-	log.Fatal(http.ListenAndServe(":9999", engine))
+	})
+	r.Run(":9999")
 }
