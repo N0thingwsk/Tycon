@@ -3,6 +3,7 @@ package tycon
 import (
 	"log"
 	"net/http"
+	"strings"
 )
 
 type HandlerFunc func(*Context)
@@ -46,6 +47,10 @@ func (r *RouterGroup) Group(prefix string) *RouterGroup {
 	return newGroup
 }
 
+func (r *RouterGroup) Use(middlewares ...HandlerFunc) {
+	r.middlewares = append(r.middlewares, middlewares...)
+}
+
 // 添加路由
 func (r *RouterGroup) addRouter(method string, comp string, handler HandlerFunc) {
 	pattern := r.prefix + comp
@@ -69,6 +74,13 @@ func (e *Engine) Run(addr string) (err error) {
 
 // 解析路由表
 func (e *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	var middlewares []HandlerFunc
+	for _, group := range e.groups {
+		if strings.HasPrefix(req.URL.Path, group.prefix) {
+			middlewares = append(middlewares, group.middlewares...)
+		}
+	}
 	c := newContext(w, req)
-	e.router.handle(c)
+	c.handlers = middlewares
+	e.engine.router.handle(c)
 }
