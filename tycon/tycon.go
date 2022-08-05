@@ -1,36 +1,66 @@
 package tycon
 
 import (
+	"log"
 	"net/http"
 )
 
 type HandlerFunc func(*Context)
 
-// 路由表
+// Engine 路由表
 type Engine struct {
+	*RouterGroup
 	router *router
+	groups []*RouterGroup
 }
 
-// 创建路由表实例
+// RouterGroup 路由分组
+type RouterGroup struct {
+	prefix      string
+	middlewares []HandlerFunc
+	parent      *RouterGroup
+	engine      *Engine
+}
+
+// New 创建路由表实例
 func New() *Engine {
-	return &Engine{
+	engine := &Engine{
 		router: newRouter(),
 	}
+	engine.RouterGroup = &RouterGroup{
+		engine: engine,
+	}
+	engine.groups = []*RouterGroup{
+		engine.RouterGroup,
+	}
+	return engine
+}
+
+func (r *RouterGroup) Group(prefix string) *RouterGroup {
+	engine := r.engine
+	newGroup := &RouterGroup{
+		prefix: r.prefix + prefix,
+		parent: r,
+		engine: engine,
+	}
+	return newGroup
 }
 
 // 添加路由
-func (e *Engine) addRouter(method string, pattern string, handler HandlerFunc) {
-	e.router.addRouter(method, pattern, handler)
+func (r *RouterGroup) addRouter(method string, comp string, handler HandlerFunc) {
+	pattern := r.prefix + comp
+	log.Printf("Router %4s - %s", method, pattern)
+	r.engine.router.addRouter(method, pattern, handler)
 }
 
 // GET GET请求方法
-func (e *Engine) GET(pattern string, handler HandlerFunc) {
-	e.addRouter("GET", pattern, handler)
+func (r *RouterGroup) GET(pattern string, handler HandlerFunc) {
+	r.addRouter("GET", pattern, handler)
 }
 
 // POST POST请求方法
-func (e *Engine) POST(pattern string, handler HandlerFunc) {
-	e.addRouter("POST", pattern, handler)
+func (r *RouterGroup) POST(pattern string, handler HandlerFunc) {
+	r.addRouter("POST", pattern, handler)
 }
 
 func (e *Engine) Run(addr string) (err error) {
